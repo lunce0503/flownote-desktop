@@ -11,7 +11,7 @@ import { verifyNoteImages } from './note-image-smoke.mjs';
 import { verifyCodeNotes } from './code-note-smoke.mjs';
 import { verifyNoteTools } from './note-tools-smoke.mjs';
 import { verifyCanvasSafety } from './canvas-safety-smoke.mjs';
-import { parseWindowsGroups } from '../../scripts/verification-scope.mjs';
+import { parseWindowsGroups } from './windows-web-scope.mjs';
 
 const selected = parseWindowsGroups(process.env.FLOWNOTE_WINDOWS_WEB_SCOPE);
 const executables = process.argv.slice(2);
