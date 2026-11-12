@@ -1,0 +1,56 @@
+name: Windows app
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - run: npm run check
+
+  package:
+    if: github.event_name == 'workflow_dispatch'
+    needs: check
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run package:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Verify packaged apps on staging
+        shell: pwsh
+        env:
+          FLOWNOTE_WINDOWS_WEB_SCOPE: shell
+        run: |
+          $version = node -p "require('./package.json').version"
+          $installDir = Join-Path $env:RUNNER_TEMP 'FlownoteInstalled'
+          $setup = Join-Path $PWD "release/Flownote-Setup-$version-x64.exe"
+          $installer = Start-Process -FilePath $setup -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
+          if ($installer.ExitCode -ne 0) { throw "Installer failed: $($installer.ExitCode)" }
+          if (!(Test-Path (Join-Path $installDir 'resources/installed-by-nsis'))) { throw 'NSIS update mode marker missing' }
+          $portableDir = Join-Path $env:RUNNER_TEMP 'FlownotePortable'
+          Expand-Archive "release/Flownote-Portable-$version-x64.zip" $portableDir
+          node scripts/shared-web-smoke.mjs (Join-Path $installDir 'Flownote.exe') (Join-Path $portableDir 'Flownote.exe')
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged Windows smoke failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flownote-windows-x64
+          path: |
+            release/Flownote-Setup-*.exe
+            release/Flownote-Portable-*.zip
+            release/SHA256SUMS.txt
+          if-no-files-found: error
