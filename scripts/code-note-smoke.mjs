@@ -117,7 +117,9 @@ export async function verifyCodeNotes(initialPage, token, {
     assert.equal(await page.getByLabel('노트 제목').inputValue(), rustName);
     await waitForStored(rustId, token, note => note.content?.text === rustOriginal
       && note.content.language === 'rust' && note.content.encoding === 'utf-16le', 'UTF-16 Rust import');
+    await page.getByLabel('코드 편집 도구 더보기', { exact: true }).click();
     await page.getByLabel('코드 언어').selectOption('typescript');
+    await page.getByLabel('코드 편집 도구 더보기', { exact: true }).click();
     await waitForStored(rustId, token, note => note.content?.text === rustOriginal
       && note.content.language === 'typescript' && note.content.encoding === 'utf-16le', 'language highlight change');
     assert.equal(await page.getByLabel('노트 제목').inputValue(), rustName, 'Language highlighting must not rename the file');

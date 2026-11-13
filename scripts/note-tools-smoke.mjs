@@ -164,7 +164,9 @@ export async function verifyWrappedCodeNote(page, token, { readClipboard }) {
   };
   try {
     await page.goto(`${web}/blog/${id}`); await page.locator('.cm-line').first().waitFor();
+    await page.getByLabel('코드 편집 도구 더보기', { exact: true }).click();
     await page.getByRole('button', { name: '자동 줄바꿈', exact: true }).click();
+    await page.getByLabel('코드 편집 도구 더보기', { exact: true }).click();
     const line = page.locator('.cm-line').first();
     await until(async () => (await line.boundingBox()).height > 150, '54 words wrap into many display rows');
     const box = await line.boundingBox();
