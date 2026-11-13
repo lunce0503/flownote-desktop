@@ -5,6 +5,10 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      check_only:
+        description: Run native contract checks without packaging or staging smoke
+        type: boolean
+        default: false
       verify_existing:
         description: Verify released 1.3.2 portable notes without packaging
         type: boolean
@@ -22,7 +26,7 @@ jobs:
       - run: npm run check
 
   package:
-    if: github.event_name == 'workflow_dispatch' && inputs.verify_existing != true
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_existing != true && inputs.check_only != true
     needs: check
     runs-on: windows-latest
     timeout-minutes: 30
@@ -61,7 +65,7 @@ jobs:
           if-no-files-found: error
 
   existing-notes:
-    if: github.event_name == 'workflow_dispatch' && inputs.verify_existing == true
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_existing == true && inputs.check_only != true
     needs: check
     runs-on: windows-latest
     timeout-minutes: 25
