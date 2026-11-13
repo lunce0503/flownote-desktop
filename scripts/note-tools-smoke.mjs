@@ -173,7 +173,7 @@ export async function verifyWrappedCodeNote(page, token, { readClipboard }) {
     const compactOptions = await options.isVisible();
     if (compactOptions) await options.click();
     await page.getByRole('button', { name: '자동 줄바꿈', exact: true }).click();
-    if (compactOptions) await options.click();
+    if (compactOptions && await options.evaluate(node => node.parentElement.open)) await options.click();
     const line = page.locator('.cm-line').first();
     await until(async () => (await line.boundingBox()).height > 150, '54 words wrap into many display rows');
     const box = await line.boundingBox();
