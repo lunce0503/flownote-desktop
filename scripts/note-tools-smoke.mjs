@@ -57,7 +57,9 @@ export async function verifyNoteTools(page, token, { readClipboard, touch = fals
   try {
     for (const format of ['code', 'live', 'source', 'preview']) {
       const id = randomUUID();
-      const original = format === 'code' ? 'alpha bravo charlie\r\n\r\nsecond line\r\n' : 'alpha bravo charlie\n\nsecond line\n';
+      const original = format === 'code'
+        ? 'alpha bravo charlie\r\n\r\nsecond line\r\n' + 'wide column '.repeat(100) + '\r\n'
+        : 'alpha bravo charlie\n\nsecond line\n';
       const content = format === 'code'
         ? { format: 'code', version: 1, language: 'plaintext', encoding: 'utf-16le', text: original }
         : { format: 'markdown', version: 1, markdown: original };
@@ -107,9 +109,12 @@ export async function verifyNoteTools(page, token, { readClipboard, touch = fals
           await page.mouse.move(start.x, start.y); await page.mouse.down();
           await page.mouse.move(start.x - 55, start.y, { steps: 5 }); await page.mouse.up();
         }
-        const pan = await surface.evaluate(node => ({ outer: node.scrollLeft,
-          inner: node.querySelector('.cm-scroller,textarea')?.scrollLeft ?? 0 }));
-        assert(pan.outer > beforePan || pan.inner > 0, `${format} horizontal pan moves the viewport`);
+        const pan = await surface.evaluate(node => {
+          const inner = node.querySelector('.cm-scroller,textarea');
+          return { outer: node.scrollLeft, inner: inner?.scrollLeft ?? 0,
+            innerWidth: inner?.clientWidth, innerScrollWidth: inner?.scrollWidth };
+        });
+        assert(pan.outer > beforePan || pan.inner > 0, `${format} horizontal pan moves the viewport: ${JSON.stringify(pan)}`);
         await page.getByRole('button', { name: '노트 확대율 초기화', exact: true }).click();
         await surface.evaluate(node => { node.scrollTop = 0; node.scrollLeft = 0; });
         await page.getByRole('button', { name: '노트 올가미', exact: true }).click();
@@ -164,9 +169,11 @@ export async function verifyWrappedCodeNote(page, token, { readClipboard }) {
   };
   try {
     await page.goto(`${web}/blog/${id}`); await page.locator('.cm-line').first().waitFor();
-    await page.getByLabel('코드 편집 도구 더보기', { exact: true }).click();
+    const options = page.getByLabel('코드 편집 도구 더보기', { exact: true });
+    const compactOptions = await options.isVisible();
+    if (compactOptions) await options.click();
     await page.getByRole('button', { name: '자동 줄바꿈', exact: true }).click();
-    await page.getByLabel('코드 편집 도구 더보기', { exact: true }).click();
+    if (compactOptions) await options.click();
     const line = page.locator('.cm-line').first();
     await until(async () => (await line.boundingBox()).height > 150, '54 words wrap into many display rows');
     const box = await line.boundingBox();
