@@ -99,8 +99,9 @@ for (const executablePath of executables) {
         const retired = await fetch(api + route, { headers: { Authorization: `Bearer ${token}` } });
         assert.equal(retired.status, 410, `Retired market route ${route}`);
       }
-      await page.getByRole('button', { name: '전체', exact: true }).click();
-      assert.equal(await page.getByRole('link', { name: /주식|밴픽|나사 퍼즐|Magic/i }).count(), 0);
+      await page.getByRole('navigation', { name: '앱 기능' }).getByRole('button', { name: '전체 기능', exact: true }).click();
+      const menu = page.getByRole('dialog', { name: '전체 기능', exact: true });
+      for (const route of ['/stocks', '/banpick', '/screw-puzzle', '/magic']) assert.equal(await menu.locator(`a[href="${route}"]`).count(), 0);
       console.log(`PASS ${kind}: fot display name, preserved profile/login/local marker, four retired UI features and market410`);
     }
     const response = page.waitForResponse(response => response.url() === entryUrl);
