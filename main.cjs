@@ -8,7 +8,7 @@ const { UpdateClient } = require('./updater.cjs');
 
 const profile = profileForArgs(process.argv);
 const origin = PROFILES[profile];
-app.setName(profile === 'staging' ? 'Flownote Staging' : 'Flownote');
+app.setName(profile === 'staging' ? 'fot Staging' : 'fot');
 app.setPath('userData', path.join(app.getPath('appData'), profile === 'staging' ? 'Flownote-Staging' : 'Flownote'));
 app.enableSandbox();
 let window;
@@ -22,14 +22,14 @@ async function updateDetails() {
   const history = state.history.slice(-10).reverse().map(item => `${item.at.slice(0, 16).replace('T', ' ')} · ${item.status}${item.version ? ` ${item.version}` : ''}`).join('\n');
   const detail = `설치 버전: ${app.getVersion()}\n채널: ${profile}\n상태: ${labels[state.status]}\n${state.notes?.map(note => `• ${note}`).join('\n') || ''}\n\n설치 확인 전에는 실행 중인 앱을 교체하지 않습니다.\n포터블은 ZIP 압축을 직접 해제해야 합니다.\n\n최근 이력(UTC)\n${history}`;
   const ready = state.status === 'ready';
-  const result = await dialog.showMessageBox(window, { type: 'info', title: 'Flownote 업데이트', message: labels[state.status], detail,
+  const result = await dialog.showMessageBox(window, { type: 'info', title: 'fot 업데이트', message: labels[state.status], detail,
     buttons: ready ? [updater.kind === 'installer' ? '설치 진행' : 'ZIP 위치 열기', '나중에'] : ['다시 확인', '닫기'], defaultId: ready ? 1 : 0, cancelId: 1 });
   if (result.response !== 0) return;
   if (!ready) { void updater.check(); return; }
   try {
     const file = await updater.verifyReady();
     if (updater.kind === 'portable') { shell.showItemInFolder(file); return; }
-    const confirmation = await dialog.showMessageBox(window, { type: 'question', title: 'Flownote 업데이트 설치',
+    const confirmation = await dialog.showMessageBox(window, { type: 'question', title: 'fot 업데이트 설치',
       message: '저장을 완료한 뒤 앱을 종료하고 설치할까요?', detail: '기존 로그인·초안·자료는 유지됩니다. 설치 프로그램과 Windows 보안 확인이 표시될 수 있습니다.', buttons: ['종료하고 설치', '취소'], defaultId: 1, cancelId: 1 });
     if (confirmation.response !== 0) return;
     await updater.verifyReady();
@@ -50,7 +50,7 @@ function setupUpdates() {
       if (window && !window.isDestroyed()) window.setProgressBar(state.status === 'downloading' ? state.progress / 100 : -1);
       if (state.status === 'ready' && promptedVersion !== state.version) {
         promptedVersion = state.version;
-        if (Notification.isSupported()) { const notification = new Notification({ title: 'Flownote 업데이트 준비됨', body: `${state.version} 다운로드·검증 완료. 도움말 → 업데이트에서 설치하세요.` }); notification.on('click', () => { void updateDetails(); }); notification.show(); }
+        if (Notification.isSupported()) { const notification = new Notification({ title: 'fot 업데이트 준비됨', body: `${state.version} 다운로드·검증 완료. 도움말 → 업데이트에서 설치하세요.` }); notification.on('click', () => { void updateDetails(); }); notification.show(); }
       }
     },
   });
@@ -71,7 +71,7 @@ function goBack() {
 }
 function showConnectionError() {
   if (!window || window.isDestroyed()) return;
-  const html = `<!doctype html><html lang="ko"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>Flownote</title><style>body{margin:0;display:grid;place-items:center;min-height:100vh;background:#f7f3e8;color:#171714;font-family:system-ui}main{max-width:440px;padding:32px}h1{font-size:28px}p{line-height:1.7;color:#706b60}a{display:inline-block;padding:14px 24px;border-radius:12px;background:#171714;color:#f7f3e8;text-decoration:none}</style><main><h1>연결을 확인해 주세요</h1><p>인터넷에 연결한 뒤 다시 시도해 주세요.<br>저장된 로그인과 로컬 초안은 유지됩니다.</p><a href="${origin}">다시 시도</a></main></html>`;
+  const html = `<!doctype html><html lang="ko"><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>fot</title><style>body{margin:0;display:grid;place-items:center;min-height:100vh;background:#f7f3e8;color:#171714;font-family:system-ui}main{max-width:440px;padding:32px}h1{font-size:28px}p{line-height:1.7;color:#706b60}a{display:inline-block;padding:14px 24px;border-radius:12px;background:#171714;color:#f7f3e8;text-decoration:none}</style><main><h1>연결을 확인해 주세요</h1><p>인터넷에 연결한 뒤 다시 시도해 주세요.<br>저장된 로그인과 로컬 초안은 유지됩니다.</p><a href="${origin}">다시 시도</a></main></html>`;
   void window.loadURL(`data:text/html;base64,${Buffer.from(html).toString('base64')}`).catch(() => {});
 }
 function loadHome() { if (window && !window.isDestroyed()) void window.loadURL(origin).catch(() => {}); }
@@ -79,7 +79,7 @@ function loadHome() { if (window && !window.isDestroyed()) void window.loadURL(o
 function createWindow() {
   window = new BrowserWindow({
     width: 1280, height: 900, minWidth: 700, minHeight: 560,
-    title: profile === 'staging' ? 'Flownote · Staging' : 'Flownote',
+    title: profile === 'staging' ? 'fot · Staging' : 'fot',
     backgroundColor: '#f7f3e8', show: false, icon: path.join(__dirname, 'build/icon.png'),
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webviewTag: false, webSecurity: true, allowRunningInsecureContent: false, navigateOnDragDrop: false },
   });
@@ -104,7 +104,7 @@ function createWindow() {
   window.on('closed', () => { window = null; });
   window.webContents.on('page-title-updated', (event, title) => {
     event.preventDefault();
-    window.setTitle(`${title || 'Flownote'}${profile === 'staging' ? ' · Staging' : ''} — Flownote`);
+    window.setTitle(`${title || 'fot'}${profile === 'staging' ? ' · Staging' : ''} — fot`);
   });
   loadHome();
 }
@@ -125,13 +125,13 @@ else {
       trustedUrl(requestingOrigin, origin) && permission === 'clipboard-sanitized-write');
     session.defaultSession.on('will-download', (event, item, contents) => {
       if (!contents || !trustedUrl(contents.getURL(), origin)) { event.preventDefault(); return; }
-      item.setSaveDialogOptions({ title: 'Flownote 파일 저장', defaultPath: path.join(app.getPath('downloads'), safeDownloadName(item.getFilename())) });
+      item.setSaveDialogOptions({ title: 'fot 파일 저장', defaultPath: path.join(app.getPath('downloads'), safeDownloadName(item.getFilename())) });
       item.once('done', (_event, state) => {
         if (state === 'interrupted' && window && !window.isDestroyed()) void dialog.showMessageBox(window, { type: 'error', message: '다운로드를 완료하지 못했습니다.', detail: '연결을 확인한 뒤 다시 시도해 주세요.' });
       });
     });
     Menu.setApplicationMenu(Menu.buildFromTemplate([
-      { label: 'Flownote', submenu: [{ label: '홈', accelerator: 'CmdOrCtrl+H', click: loadHome }, { type: 'separator' }, { role: 'quit', label: '종료' }] },
+      { label: 'fot', submenu: [{ label: '홈', accelerator: 'CmdOrCtrl+H', click: loadHome }, { type: 'separator' }, { role: 'quit', label: '종료' }] },
       { label: '편집', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
       { label: '이동', submenu: [{ label: '뒤로', accelerator: 'Alt+Left', click: goBack }, { label: '앞으로', accelerator: 'Alt+Right', click: () => { if (window?.webContents.navigationHistory.canGoForward()) window.webContents.navigationHistory.goForward(); } }] },
       { label: '보기', submenu: [{ role: 'reload', label: '새로고침' }, { role: 'forceReload', label: '캐시 없이 새로고침' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen', label: '전체 화면' }] },

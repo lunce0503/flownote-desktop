@@ -1,4 +1,4 @@
-# Flownote Windows
+# fot Windows
 
 Windows 10/11 x64의 Electron 설치 앱. 기존 웹 기능·편집기·cloud API를 공유하며 인터넷 연결이 필요하다. Android와 같은 계정으로 자료를 동기화한다. PC에서 앱 서버나 DB를 실행하지 않는다.
 
@@ -13,7 +13,7 @@ npm run icons
 npm run start:staging
 ```
 
-Production은 `npm start`, staging은 `--staging` 인자를 사용한다. 임의 URL 환경 변수나 loopback fallback은 제공하지 않는다. Production과 staging은 별도 userData 디렉터리(`Flownote`, `Flownote-Staging`)를 사용한다.
+Production은 `npm start`, staging은 `--staging` 인자를 사용한다. 임의 URL 환경 변수나 loopback fallback은 제공하지 않는다. Production과 staging은 별도 userData 디렉터리(`fot`, `Flownote-Staging`)를 사용한다.
 
 ## Windows 릴리즈
 

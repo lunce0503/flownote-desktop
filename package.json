@@ -1,9 +1,9 @@
 {
   "name": "flownote-desktop",
-  "productName": "Flownote",
+  "productName": "fot",
   "version": "1.3.2",
-  "description": "Flownote Windows desktop application",
-  "author": "Flownote",
+  "description": "fot Windows desktop application",
+  "author": "fot",
   "license": "UNLICENSED",
   "private": true,
   "main": "main.cjs",
