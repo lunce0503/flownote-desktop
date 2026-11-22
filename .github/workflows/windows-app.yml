@@ -5,6 +5,10 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
+      verify_fot_release:
+        description: Verify signed 1.3.2 to fot 1.3.3 upgrade in existing artifacts
+        type: boolean
+        default: false
       check_only:
         description: Run native contract checks without packaging or staging smoke
         type: boolean
@@ -26,7 +30,7 @@ jobs:
       - run: npm run check
 
   package:
-    if: github.event_name == 'workflow_dispatch' && inputs.verify_existing != true && inputs.check_only != true
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_existing != true && inputs.check_only != true && inputs.verify_fot_release != true
     needs: check
     runs-on: windows-latest
     timeout-minutes: 30
@@ -97,3 +101,49 @@ jobs:
         run: |
           node scripts/shared-web-smoke.mjs (Join-Path $env:RUNNER_TEMP 'FlownotePortable/Flownote.exe')
           if ($LASTEXITCODE -ne 0) { throw 'Released portable notes smoke failed' }
+
+  fot-upgrade:
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_fot_release == true && inputs.check_only != true
+    needs: check
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Verify existing release bytes and prepare baseline
+        shell: pwsh
+        run: |
+          $base = 'https://github.com/lunce0503/flownote/releases/download'
+          $expected = @{
+            '1.3.2' = '1889616b2458c72ecc1ef016f96aa145f74f43afe901215c151564b31353bce0'
+            '1.3.3' = '072e635fc1852519c9efe9ca248ce51b7be000b5e82c7d5ee2cc971e236bc172'
+          }
+          foreach ($version in @('1.3.2','1.3.3')) {
+            Invoke-WebRequest "$base/windows-v$version/SHA256SUMS.txt" -OutFile "checksums-$version.txt"
+            if ((Get-FileHash "checksums-$version.txt" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected[$version]) { throw 'Pinned CI checksum mismatch' }
+            foreach ($kind in @('Setup','Portable')) {
+              $extension = if ($kind -eq 'Setup') { 'exe' } else { 'zip' }
+              $name = "Flownote-$kind-$version-x64.$extension"
+              Invoke-WebRequest "$base/windows-v$version/$name" -OutFile $name
+              $hash = (Get-FileHash $name -Algorithm SHA256).Hash.ToLowerInvariant()
+              if (!((Get-Content "checksums-$version.txt") -contains "$hash  $name")) { throw 'Artifact bytes mismatch' }
+            }
+          }
+          $installDir = Join-Path $env:RUNNER_TEMP 'FlownoteInstalled'
+          $result = Start-Process (Join-Path $PWD 'Flownote-Setup-1.3.2-x64.exe') -ArgumentList '/S', "/D=$installDir" -Wait -PassThru
+          if ($result.ExitCode -ne 0) { throw 'Baseline installation failed' }
+          Expand-Archive 'Flownote-Portable-1.3.2-x64.zip' (Join-Path $env:RUNNER_TEMP 'FlownotePortableBaseline')
+          Expand-Archive 'Flownote-Portable-1.3.3-x64.zip' (Join-Path $env:RUNNER_TEMP 'FlownotePortable')
+      - name: Verify signed upgrade and preserved identity
+        shell: pwsh
+        env:
+          FLOWNOTE_WINDOWS_WEB_SCOPE: shell
+        run: |
+          $env:FLOWNOTE_BASELINE_INSTALLER = Join-Path $env:RUNNER_TEMP 'FlownoteInstalled/Flownote.exe'
+          $env:FLOWNOTE_BASELINE_PORTABLE = Join-Path $env:RUNNER_TEMP 'FlownotePortableBaseline/Flownote.exe'
+          node scripts/shared-web-smoke.mjs (Join-Path $env:RUNNER_TEMP 'FlownoteInstalled/Flownote.exe') (Join-Path $env:RUNNER_TEMP 'FlownotePortable/Flownote.exe')
+          if ($LASTEXITCODE -ne 0) { throw 'fot upgrade verification failed' }

@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { verifyReader } from './reader-web-smoke.mjs';
 import { verifySharedFolders } from './shared-folders-smoke.mjs';
 import { verifyNoteEditing } from './note-web-smoke.mjs';
@@ -52,8 +53,11 @@ for (const executablePath of executables) {
   await request('/api/users', 'POST', { email, password, username: `nf-${randomUUID().slice(0, 8)}`, nickname: 'Synthetic native web release' });
   const { token } = await request('/api/users/login', 'POST', { email, password });
   let app, canvas;
+  const baseline = process.env[kind === 'portable' ? 'FLOWNOTE_BASELINE_PORTABLE' : 'FLOWNOTE_BASELINE_INSTALLER'];
+  let firstLaunch = true;
   const launch = async () => {
-    app = await electron.launch({ executablePath, args: ['--staging'], timeout: 60000 });
+    app = await electron.launch({ executablePath: firstLaunch && baseline ? baseline : executablePath, args: ['--staging'], timeout: 60000 });
+    firstLaunch = false;
     const page = await app.firstWindow(); page.setDefaultTimeout(45000);
     await page.waitForURL(`${web}/**`);
     return page;
@@ -66,10 +70,39 @@ for (const executablePath of executables) {
     await page.getByRole('button', { name: '계속하기', exact: true }).click();
     await page.getByRole('navigation', { name: '앱 기능' }).waitFor();
     await page.evaluate(() => localStorage.setItem('flownote-shared-web-release-probe', 'preserved'));
+    const profile = await app.evaluate(({ app }) => app.getPath('userData'));
+    let verifiedInstaller;
+    if (baseline) {
+      const upgrade = await app.evaluate(async ({ app }, kind) => {
+        const load = process.getBuiltinModule('node:module').createRequire(app.getAppPath() + '/package.json');
+        const fs = load('node:fs/promises'), path = load('node:path');
+        const { UpdateClient } = load('./updater.cjs');
+        const directory = await fs.mkdtemp(path.join(app.getPath('temp'), 'fot-signed-upgrade-'));
+        const client = new UpdateClient({ directory, channel: 'staging', version: app.getVersion(), kind });
+        await client.check();
+        if (client.state.status !== 'ready' || client.state.version !== '1.3.3') throw new Error('Expected signed fot1.3.3 upgrade');
+        const file = await client.verifyReady();
+        return { file, version: client.state.version };
+      }, kind);
+      verifiedInstaller = kind === 'installer' ? upgrade.file : undefined;
+      console.log(`PASS ${kind}: existing1.3.2 packaged updater downloaded and verified fot${upgrade.version}`);
+    }
     await app.close(); app = undefined;
+    if (verifiedInstaller) execFileSync(verifiedInstaller, ['/S', `/D=${path.dirname(executablePath)}`], { timeout: 180000 });
     page = await launch();
     await page.getByRole('navigation', { name: '앱 기능' }).waitFor();
     assert.equal(await page.evaluate(() => localStorage.getItem('flownote-shared-web-release-probe')), 'preserved');
+    if (baseline) {
+      assert.deepEqual(await app.evaluate(({ app }) => ({ name: app.getName(), version: app.getVersion(), profile: app.getPath('userData') })),
+        { name: 'fot Staging', version: '1.3.3', profile });
+      for (const route of ['/api/stocks', '/api/stocks/AAPL', '/api/market', '/api/market/AAPL']) {
+        const retired = await fetch(api + route, { headers: { Authorization: `Bearer ${token}` } });
+        assert.equal(retired.status, 410, `Retired market route ${route}`);
+      }
+      await page.getByRole('button', { name: '전체', exact: true }).click();
+      assert.equal(await page.getByRole('link', { name: /주식|밴픽|나사 퍼즐|Magic/i }).count(), 0);
+      console.log(`PASS ${kind}: fot display name, preserved profile/login/local marker, four retired UI features and market410`);
+    }
     const response = page.waitForResponse(response => response.url() === entryUrl);
     await page.reload();
     assert([200, 304].includes((await response).status()), 'Entry module did not load or revalidate');
