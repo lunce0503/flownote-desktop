@@ -1,7 +1,7 @@
 {
   "name": "flownote-desktop",
   "productName": "fot",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "fot Windows desktop application",
   "author": "fot",
   "license": "UNLICENSED",
@@ -24,10 +24,22 @@
   "build": {
     "appId": "com.flownote.desktop",
     "asar": true,
-    "directories": { "output": "release" },
-    "files": ["main.cjs", "policy.cjs", "updater.cjs", "update-public.pem", "package.json", "build/icon.png"],
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "policy.cjs",
+      "updater.cjs",
+      "update-public.pem",
+      "package.json",
+      "build/icon.png"
+    ],
     "win": {
-      "target": ["nsis", "zip"],
+      "target": [
+        "nsis",
+        "zip"
+      ],
       "icon": "build/icon.ico",
       "artifactName": "Flownote-Portable-${version}-${arch}.${ext}",
       "executableName": "Flownote"
